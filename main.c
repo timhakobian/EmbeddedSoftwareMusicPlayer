@@ -81,32 +81,17 @@ int getKey() {
 	return 0;
 }
 
-/*
-//Set the LED to blinking - NOT NEEDED
-void blinkKtimes(int times) {
-	for(int i = 0; i < times; ++i) {
-		blinkTest();
-	}
-}
-
-//Each blink test time - NOT NEEDED
-void blinkTest() {
-	SET_BIT(PORTB,0);
-	avr_wait(500);
-	CLR_BIT(PORTB,0);
-	avr_wait(500);
-}
-*/
-
 //Function to play each note, given by Givargis
 void play_note(int freq, int duration) {
+	char bufferFreq[17];
+	char bufferTh[17];
 	
 	//Get total time done, and get the T high
-	int time = ceil((TotalDuration*100 / freq));
+	int time = ceil((TotalDuration*100 / freq)); // Amount of time per cycle (duration of entire song divided by the frequency of that note)
 	//Get the Thigh
-	int Thigh = time/2 * ThTlConst;
+	int Thigh = time/2 * ThTlConst; // The amount of time for high part of cycle
 	//Decrement the T high
-	if(Thigh == time) {
+	if(Thigh == time) {// If ThTlConst == 2
 		Thigh--;
 	}
 	//Get the T low
@@ -114,16 +99,19 @@ void play_note(int freq, int duration) {
 	
 	//Output everything
 	lcd_clr();
-	char bufferFreq[17]; 
-	char bufferTh[17];
+	
 	sprintf(bufferFreq, "f:%03d d:%03d %d", freq, duration, TotalDuration);
 	sprintf(bufferTh, "h:%d l:%d %d I:%d", Thigh, Tlow, time, myFreqIndex);
-	lcd_puts2(bufferFreq);
-	lcd_pos(1,0);
 	lcd_puts2(bufferTh);
+	lcd_pos(1,0);
+	lcd_puts2(bufferFreq);
 	
-	//Code to actually play the song - P is a cycle
-	int P = duration*85 / time;
+	
+	int d = 85;
+	// Code to actually play the song - P is the number of cycles
+	// time is the amount of time it takes per cycle
+	// duration is the time per each note
+	int P = duration*d / time;
 	for (int index = 0; index < P; index++) {
 		//Set B4
 		SET_BIT(PORTA,0);
@@ -139,13 +127,14 @@ void play_note(int freq, int duration) {
 //Function to play the song, given by teacher
 void play_song()
 {
-	//The current song's length is 42
+	//The current song's length is 42 (42 notes) 
+	//currentNote is the index position of current note being played
 	if (currentNote < songSize)
 	{
-		//Create the song
+		//Create the song note
 		struct note myNote = mySong[currentNote];
 
-		//Send it in to play note
+		//Send it in to play note     // Total duration divided by myduration says how long the note should play (higher = shorter)
 		play_note(ceil(FrequenciesArray[myNote.freq]*myChangeFrequencies[myFreqIndex]), TotalDuration/myDurations[myNote.duration]);
 
 		//Increment the note
@@ -160,37 +149,22 @@ int main(void)
 	lcd_init();
 	DDRA = 0x01;
 
-	//Place the song on end
-	currentNote = songSize;
+	//We set it on the last index to ensure it doesn't play until we start it
+	currentNote = 600;
 	
 	//Infinite loop
 	while (1)
 	{
-		//Play song
+		//Calls function which plays note
 		play_song();
 		
 		//Use keypad for controls
 		int key = getKey() - 1;
+		
+		
 
-		if (key == -1) {
-			// Do Nothing
-		}
-		else if (myKeypad[key] == '1') 
-		{
-			//If the key pressed is one and the constant is greater than 0.25, then decrement it
-			if (ThTlConst > 0.25) 
-			{
-				ThTlConst = ThTlConst - 0.2;
-			}
-		}
-		else if (myKeypad[key] == '2') 
-		{
-			//If the key pressed is 2 and the constant is less than 1.9, then increment it
-			if (ThTlConst < 1.9) 
-			{
-				ThTlConst = ThTlConst + 0.2;
-			}
-		}
+		if (key == -1) {}
+		// 4 and 5 control tempo
 		else if (myKeypad[key] == '4') 
 		{
 			//If the key pressed is 4 and the constant is greater than 20, then decrement duration
@@ -204,6 +178,7 @@ int main(void)
 			//If the key pressed is 5 then increment duration
 			TotalDuration = TotalDuration + 25;
 		}
+		// 7 and 8 control pitch
 		else if (myKeypad[key] == '7') 
 		{
 			//If the key pressed is 7 and the constant is greater than 1, then swap to the next frequency changer
@@ -221,11 +196,6 @@ int main(void)
 			}
 
 		}
-		else 
-		{
-			//If any key is pressed, start the song playing!
-			currentNote = 0;
-		}
+		else {currentNote = 0;}
 	}
 }
-
